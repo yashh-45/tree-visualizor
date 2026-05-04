@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DS2 Tree Visualizer — VIT</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0b0e16;--s1:#0f1522;--s2:#141c2e;--s3:#1a2438;
+  --b1:#1e2d45;--b2:#26374f;--b3:#2e4060;
+  --t1:#e8edf5;--t2:#8fa3bc;--t3:#4d6480;
+  --acc:#3b82f6;--acc2:#60a5fa;
+  --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#a855f7;--cyn:#06b6d4;--pnk:#ec4899;
+  --mono:'JetBrains Mono',monospace;--ui:'Inter',sans-serif;
+}
+html,body{width:100%;min-height:100vh;background:var(--bg);color:var(--t1);font-family:var(--ui);font-size:14px;}
+
+/* LAYOUT */
+#app{display:flex;height:100vh;overflow:hidden;}
+#sidebar{width:210px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow-y:auto;}
+#content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#topbar{height:48px;background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 1.25rem;gap:.75rem;flex-shrink:0;}
+#workspace{flex:1;display:flex;overflow:hidden;}
+#left-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+#right-pane{width:280px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;}
+
+/* SIDEBAR */
+.logo{padding:1rem;border-bottom:1px solid var(--b1);}
+.logo-title{font-size:.9rem;font-weight:700;color:var(--t1);}
+.logo-sub{font-size:.65rem;color:var(--t3);font-family:var(--mono);margin-top:2px;}
+.logo-badge{display:inline-block;margin-top:5px;background:var(--s3);border:1px solid var(--b2);color:var(--acc2);font-size:.6rem;font-family:var(--mono);padding:2px 6px;border-radius:3px;}
+.nav-group{padding:.5rem 0;border-bottom:1px solid var(--b1);}
+.nav-group-label{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding:.3rem .9rem .2rem;font-weight:600;}
+.nav-item{display:flex;align-items:center;gap:7px;padding:.38rem .9rem;cursor:pointer;font-size:.75rem;color:var(--t2);border-left:2px solid transparent;transition:all .1s;font-family:var(--mono);}
+.nav-item:hover{background:var(--s2);color:var(--t1);}
+.nav-item.active{background:rgba(59,130,246,.07);color:var(--acc2);border-left-color:var(--acc);}
+.nav-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.nav-badge{margin-left:auto;font-size:.55rem;padding:1px 4px;border-radius:2px;font-family:var(--mono);}
+.nb-ready{background:rgba(34,197,94,.1);color:var(--grn);}
+.nb-soon{background:rgba(234,179,8,.08);color:var(--yel);}
+.sidebar-foot{margin-top:auto;padding:.75rem .9rem;border-top:1px solid var(--b1);font-size:.62rem;color:var(--t3);font-family:var(--mono);line-height:1.7;}
+
+/* TOPBAR */
+.tb-name{font-size:.9rem;font-weight:600;}
+.tb-unit{font-size:.65rem;color:var(--t3);font-family:var(--mono);}
+.tb-right{margin-left:auto;display:flex;gap:.4rem;align-items:center;}
+
+/* CONTROLS BAR */
+#ctrl-bar{padding:.55rem 1rem;background:var(--s1);border-bottom:1px solid var(--b1);display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;flex-shrink:0;}
+
+/* STEP BAR */
+#step-bar{padding:.4rem 1rem;background:#080c14;border-bottom:1px solid var(--b1);display:none;flex-wrap:wrap;gap:.4rem;align-items:center;flex-shrink:0;}
+.step-info{display:flex;align-items:center;gap:.5rem;flex:1;min-width:0;}
+.step-counter{font-size:.65rem;color:var(--t3);font-family:var(--mono);white-space:nowrap;}
+
+/* SVG AREA */
+#svg-wrap{flex:1;overflow:hidden;background:var(--bg);position:relative;}
+svg#T{width:100%;height:100%;display:block;}
+
+/* BOTTOM BAR (heap array, trie words) */
+#bottom-bar{background:var(--s1);border-top:1px solid var(--b1);padding:.5rem 1rem;display:none;flex-wrap:wrap;gap:4px;align-items:center;flex-shrink:0;max-height:80px;overflow-y:auto;}
+
+/* OBSERVATIONS */
+.obs-head{padding:.65rem 1rem;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.obs-head-title{font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t2);}
+.obs-clear{font-size:.62rem;color:var(--t3);cursor:pointer;font-family:var(--mono);}
+.obs-clear:hover{color:var(--red);}
+#obs-now{padding:.75rem 1rem;border-bottom:1px solid var(--b1);background:rgba(59,130,246,.04);flex-shrink:0;min-height:100px;}
+.obs-now-label{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--acc2);font-family:var(--mono);margin-bottom:.35rem;}
+.obs-now-what{font-size:.8rem;color:var(--t1);line-height:1.55;}
+.obs-now-why{font-size:.7rem;color:var(--t2);margin-top:.35rem;line-height:1.5;font-style:italic;border-top:1px solid var(--b1);padding-top:.35rem;margin-top:.4rem;}
+#obs-log{flex:1;overflow-y:auto;padding:.25rem 0;}
+.obs-row{padding:.45rem 1rem;border-bottom:1px solid rgba(30,45,69,.4);cursor:pointer;}
+.obs-row:hover{background:var(--s2);}
+.obs-row-n{font-size:.58rem;color:var(--t3);font-family:var(--mono);}
+.obs-row-what{font-size:.7rem;color:var(--t2);margin-top:1px;line-height:1.35;}
+.obs-row-why{font-size:.63rem;color:var(--t3);margin-top:2px;font-style:italic;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:.7rem;font-weight:500;border:1px solid var(--b2);background:var(--s2);color:var(--t2);transition:border-color .1s,color .1s;white-space:nowrap;}
+.btn:hover{border-color:var(--acc);color:var(--acc2);}
+.btn:active{opacity:.8;}
+.btn-blue{background:var(--acc);border-color:var(--acc);color:#fff;}.btn-blue:hover{background:#2563eb;color:#fff;}
+.btn-red{border-color:#7f1d1d;color:var(--red);}.btn-red:hover{background:#7f1d1d;color:#fff;}
+.btn-grn{border-color:#14532d;color:var(--grn);}.btn-grn:hover{background:#14532d;color:#fff;}
+.btn-sm{padding:3px 8px;font-size:.65rem;}
+.btn-step{padding:4px 10px;font-size:.68rem;}
+.inp{background:var(--s2);border:1px solid var(--b2);color:var(--t1);padding:4px 8px;border-radius:4px;font-family:var(--mono);font-size:.72rem;outline:none;width:95px;}
+.inp:focus{border-color:var(--acc);}
+.inp-wide{width:130px;}
+.sep{width:1px;height:18px;background:var(--b1);margin:0 2px;}
+.plabel{font-size:.62rem;color:var(--t3);}
+
+/* SVG node styles — INSTANT color change, no CSS transition */
+.nd circle{stroke-width:2;}
+.nd text{font-family:'JetBrains Mono',monospace;font-weight:600;text-anchor:middle;dominant-baseline:middle;}
+.nd .lbl{font-size:9px;fill:var(--t3);dominant-baseline:auto;}
+/* states */
+.st-def circle{fill:#1a2d4a;stroke:#2a4070;}
+.st-def text{font-size:13px;fill:#e8edf5;}
+.st-path circle{fill:#1e3a5f;stroke:#3b82f6;}
+.st-path text{font-size:13px;fill:#93c5fd;}
+.st-new circle{fill:#14532d;stroke:#22c55e;}
+.st-new text{font-size:13px;fill:#bbf7d0;}
+.st-hi circle{fill:#d97706;stroke:#fbbf24;}
+.st-hi text{font-size:13px;fill:#fff;}
+.st-rot circle{fill:#5b21b6;stroke:#a855f7;}
+.st-rot text{font-size:13px;fill:#e9d5ff;}
+.st-rec circle{fill:#9d174d;stroke:#ec4899;}
+.st-rec text{font-size:13px;fill:#fbcfe8;}
+.st-del circle{fill:#7f1d1d;stroke:#ef4444;}
+.st-del text{font-size:13px;fill:#fecaca;}
+.st-fnd circle{fill:#0e7490;stroke:#06b6d4;}
+.st-fnd text{font-size:13px;fill:#a5f3fc;}
+.st-rb-r circle{fill:#7f1d1d;stroke:#ef4444;}
+.st-rb-r text{font-size:13px;fill:#fca5a5;}
+.st-rb-b circle{fill:#1e293b;stroke:#475569;}
+.st-rb-b text{font-size:13px;fill:#cbd5e1;}
+.edge{stroke:#1e3a5f;stroke-width:1.5;fill:none;}
+.edge-hi{stroke:#3b82f6;stroke-width:2;fill:none;}
+
+/* HEAP ARRAY */
+.hcell{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hcell-v{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--s2);border:1px solid var(--b2);border-radius:4px;font-family:var(--mono);font-size:.7rem;color:var(--t1);}
+.hcell-i{font-size:.52rem;color:var(--t3);font-family:var(--mono);}
+.hcell.hi .hcell-v{background:rgba(234,179,8,.15);border-color:var(--yel);color:var(--yel);}
+.hcell.sw .hcell-v{background:rgba(168,85,247,.15);border-color:var(--pur);color:var(--pur);}
+
+/* TRIE WORD CHIPS */
+.twc{font-size:.65rem;font-family:var(--mono);background:var(--s2);border:1px solid var(--b2);color:var(--t2);padding:2px 7px;border-radius:3px;cursor:pointer;}
+.twc:hover{border-color:var(--cyn);color:var(--cyn);}
+.twc.found{border-color:var(--grn);color:var(--grn);}
+
+/* DASHBOARD */
+#dash{padding:1.5rem;overflow-y:auto;flex:1;}
+.dash-hero{margin-bottom:1.5rem;}
+.dash-hero h1{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;}
+.dash-hero p{font-size:.8rem;color:var(--t2);margin-top:.35rem;line-height:1.6;max-width:480px;}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.85rem;}
+.dcard{background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:1.1rem;cursor:pointer;transition:border-color .15s,transform .15s;position:relative;}
+.dcard:hover{border-color:var(--b3);transform:translateY(-2px);}
+.dcard.rdy:hover{border-color:var(--acc);}
+.dcard.soon{cursor:default;opacity:.65;}
+.dcard-badge{position:absolute;top:.7rem;right:.7rem;font-size:.55rem;padding:1px 5px;border-radius:2px;font-family:var(--mono);}
+.dcard-icon{font-size:1.4rem;margin-bottom:.5rem;}
+.dcard-name{font-size:.85rem;font-weight:600;}
+.dcard-unit{font-size:.62rem;color:var(--t3);font-family:var(--mono);margin-top:1px;}
+.dcard-desc{font-size:.7rem;color:var(--t2);margin-top:.4rem;line-height:1.45;}
+.dcard-tags{margin-top:.6rem;display:flex;flex-wrap:wrap;gap:3px;}
+.dtag{font-size:.55rem;background:var(--s3);border:1px solid var(--b1);color:var(--t3);padding:1px 4px;border-radius:2px;font-family:var(--mono);}
+
+/* scroll */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+.page{display:none;flex:1;overflow:hidden;}
+.page.on{display:flex;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="logo">
+    <div class="logo-title">DS2 Visualizer</div>
+    <div class="logo-sub">Vishwakarma Inst. of Tech.</div>
+    <div class="logo-badge">AY 2025–26 · Sem 4</div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Overview</div>
+    <div class="nav-item active" id="ni-dash" onclick="go('dash')"><div class="nav-dot" style="background:var(--acc)"></div>Dashboard</div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Section 1 · Advanced Trees</div>
+    <div class="nav-item" id="ni-avl" onclick="go('avl')"><div class="nav-dot" style="background:var(--grn)"></div>AVL Tree<span class="nav-badge nb-ready">ready</span></div>
+    <div class="nav-item" id="ni-rbt" onclick="go('rbt')"><div class="nav-dot" style="background:var(--red)"></div>Red-Black Tree<span class="nav-badge nb-ready">ready</span></div>
+    <div class="nav-item" id="ni-heap" onclick="go('heap')"><div class="nav-dot" style="background:var(--ora)"></div>Heap (Min/Max)<span class="nav-badge nb-ready">ready</span></div>
+    <div class="nav-item" id="ni-huff" onclick="go('huff')"><div class="nav-dot" style="background:var(--pur)"></div>Huffman Tree<span class="nav-badge nb-ready">ready</span></div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Section 1 · More Trees</div>
+    <div class="nav-item" id="ni-splay" onclick="go('splay')"><div class="nav-dot" style="background:var(--yel)"></div>Splay Tree<span class="nav-badge nb-ready">ready</span></div>
+    <div class="nav-item" id="ni-trie" onclick="go('trie')"><div class="nav-dot" style="background:var(--cyn)"></div>Trie<span class="nav-badge nb-ready">ready</span></div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Section 2 · Randomized</div>
+    <div class="nav-item" id="ni-btree" onclick="go('btree')"><div class="nav-dot" style="background:var(--pnk)"></div>B-Tree<span class="nav-badge nb-soon">soon</span></div>
+  </div>
+  <div class="sidebar-foot">Unit 1 · Unit 2 · Unit 3<br/>DS2 Semester Project</div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+  <div id="topbar">
+    <span class="tb-name" id="tb-name">Dashboard</span>
+    <span class="tb-unit" id="tb-unit"></span>
+    <div class="tb-right" id="tb-right"></div>
+  </div>
+
+  <!-- DASHBOARD PAGE -->
+  <div id="pg-dash" class="page on" style="flex-direction:column;overflow-y:auto;">
+    <div id="dash">
+      <div class="dash-hero">
+        <h1>DS2 Tree Visualizer</h1>
+        <p>Step-by-step interactive visualizations for every data structure in your DS2 syllabus. Each operation shows you exactly what happened and <em>why</em>.</p>
+      </div>
+      <div class="dash-grid" id="dash-grid"></div>
+    </div>
+  </div>
+
+  <!-- TREE PAGE (shared) -->
+  <div id="pg-tree" class="page" style="flex-direction:column;">
+    <div id="workspace">
+      <div id="left-pane">
+        <div id="ctrl-bar"></div>
+        <div id="step-bar">
+          <button class="btn btn-step" onclick="sFirst()">⏮</button>
+          <button class="btn btn-step" onclick="sPrev()">◀ Prev</button>
+          <button class="btn btn-step" id="autoBtn" onclick="sAuto()">▶ Auto</button>
+          <button class="btn btn-step" onclick="sNext()">Next ▶</button>
+          <button class="btn btn-step" onclick="sLast()">⏭</button>
+          <span class="sep"></span>
+          <span style="font-size:.62rem;color:var(--t3);font-family:var(--mono);">Speed</span>
+          <input type="range" id="spd" min="1" max="10" value="5" style="width:65px;accent-color:var(--acc);cursor:pointer;">
+          <span class="sep"></span>
+          <span class="step-counter" id="sc"></span>
+        </div>
+        <div id="svg-wrap">
+          <svg id="T" viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg">
+            <g id="TR"></g>
+          </svg>
+        </div>
+        <div id="bottom-bar"></div>
+      </div>
+      <div id="right-pane">
+        <div class="obs-head">
+          <span class="obs-head-title">Observations</span>
+          <span class="obs-clear" onclick="obsClear()">clear all</span>
+        </div>
+        <div id="obs-now">
+          <div class="obs-now-label">Current Step</div>
+          <div class="obs-now-what" id="obs-what">Perform an operation to begin.</div>
+          <div class="obs-now-why" id="obs-why" style="display:none;"></div>
+        </div>
+        <div id="obs-log"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #content -->
+</div><!-- #app -->
+
+<script>
+'use strict';
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GLOBALS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let CUR='dash', STEPS=[], SI=0, AUTO=null, OBS_N=0;
+const NS='http://www.w3.org/2000/svg';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DASHBOARD
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const CARDS=[
+  {id:'avl',  name:'AVL Tree',       icon:'⚖️', unit:'Unit 1',ready:true, color:'#22c55e',
+   desc:'Height-balanced BST ensuring O(log n) via rotations.',
+   tags:['LL Rotation','RR Rotation','LR Rotation','RL Rotation','Balance Factor']},
+  {id:'rbt',  name:'Red-Black Tree', icon:'🔴', unit:'Unit 1',ready:true, color:'#ef4444',
+   desc:'5-property balanced BST. Used in Linux scheduler, Java TreeMap.',
+   tags:['Recoloring','Case 1/2/3','Fix-up','5 Properties']},
+  {id:'heap', name:'Heap (Min/Max)', icon:'🏔️', unit:'Unit 2',ready:true, color:'#f97316',
+   desc:'Complete binary tree. Foundation of priority queues.',
+   tags:['Heapify-Up','Heapify-Down','Extract Root','Array View']},
+  {id:'huff', name:'Huffman Tree',   icon:'📦', unit:'Unit 1',ready:true, color:'#a855f7',
+   desc:'Optimal prefix-free encoding. ZIP, JPEG, MP3 use this.',
+   tags:['Freq Count','Min-Heap','Merge','Encoding Table']},
+  {id:'splay',name:'Splay Tree',     icon:'🌀', unit:'Unit 1',ready:true, color:'#eab308',
+   desc:'Self-adjusting BST. Accessed nodes moved to root.',
+   tags:['Zig','Zig-Zig','Zig-Zag','Amortized O(log n)']},
+  {id:'trie', name:'Trie',           icon:'🌿', unit:'Unit 3',ready:true, color:'#06b6d4',
+   desc:'Prefix tree for string storage. O(L) search by string length.',
+   tags:['Insert','Search','Prefix Query','Autocomplete']},
+  {id:'btree',name:'B-Tree',         icon:'🌳', unit:'Unit 1',ready:false,color:'#ec4899',
+   desc:'Multi-way search tree. Used in databases & file systems.',
+   tags:['Split','Merge','Order-m','Disk I/O']},
+];
+function buildDash(){
+  document.getElementById('dash-grid').innerHTML=CARDS.map(c=>`
+    <div class="dcard ${c.ready?'rdy':'soon'}" onclick="${c.ready?`go('${c.id}')`:''}" >
+      <div class="dcard-badge ${c.ready?'nb-ready':'nb-soon'}">${c.ready?'● live':'○ soon'}</div>
+      <div class="dcard-icon">${c.icon}</div>
+      <div class="dcard-name">${c.name}</div>
+      <div class="dcard-unit">${c.unit}</div>
+      <div class="dcard-desc">${c.desc}</div>
+      <div class="dcard-tags">${c.tags.map(t=>`<span class="dtag">${t}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NAVIGATION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function go(id){
+  CUR=id;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const ni=document.getElementById('ni-'+id); if(ni)ni.classList.add('active');
+  const c=CARDS.find(x=>x.id===id)||{};
+  document.getElementById('tb-name').textContent=c.name||'Dashboard';
+  document.getElementById('tb-unit').textContent=c.unit||'';
+  if(id==='dash'){
+    document.getElementById('pg-dash').classList.add('on');
+    document.getElementById('pg-tree').classList.remove('on');
+    document.getElementById('ni-dash').classList.add('active');
+    return;
+  }
+  document.getElementById('pg-dash').classList.remove('on');
+  document.getElementById('pg-tree').classList.add('on');
+  stopAuto(); STEPS=[]; SI=0; obsClear();
+  document.getElementById('step-bar').style.display='none';
+  document.getElementById('bottom-bar').style.display='none';
+  document.getElementById('bottom-bar').innerHTML='';
+  svgClear();
+  const initFn={avl:initAVL,rbt:initRBT,heap:initHeap,huff:initHuff,splay:initSplay,trie:initTrie,btree:initBTree};
+  if(initFn[id])initFn[id]();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SVG ENGINE — pure SVG, viewBox, no canvas
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const R=22, HG=54, VG=72;
+function svgClear(){document.getElementById('TR').innerHTML='';}
+
+function svgEl(tag,attrs){
+  const e=document.createElementNS(NS,tag);
+  if(attrs)Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+  return e;
+}
+
+// Compute layout using in-order counter → guaranteed no overlap
+function layout(root,isNil){
+  if(!root||root===isNil||root.val==null)return[];
+  let ctr=0;
+  function ax(n){if(!n||n===isNil||n.val==null)return;ax(n.left);n._x=ctr*HG;ctr++;ax(n.right);}
+  function ay(n,d){if(!n||n===isNil||n.val==null)return;n._y=d*VG;ay(n.left,d+1);ay(n.right,d+1);}
+  ax(root);ay(root,0);
+  const ps=[];function col(n){if(!n||n===isNil||n.val==null)return;ps.push(n);col(n.left);col(n.right);}col(root);
+  return ps;
+}
+
+function renderSVG(root, isNil, classOf, subOf){
+  svgClear();
+  const g=document.getElementById('TR');
+
+  if(!root||root===isNil||root.val==null){
+    const t=svgEl('text',{x:450,y:250,'text-anchor':'middle','dominant-baseline':'middle',
+      fill:'#4d6480','font-family':'JetBrains Mono','font-size':14});
+    t.textContent='Empty — insert a value to begin'; g.appendChild(t); return;
+  }
+
+  const ps=layout(root,isNil);
+  if(!ps.length)return;
+  const xs=ps.map(p=>p._x), ys=ps.map(p=>p._y);
+  const mnX=Math.min(...xs),mxX=Math.max(...xs),mnY=Math.min(...ys),mxY=Math.max(...ys);
+  const tW=(mxX-mnX)||1, tH=(mxY-mnY)||1;
+  const pad=55;
+  const sc=Math.min((900-pad*2)/tW,(500-pad*2)/tH,2.0);
+  const ox=(900-tW*sc)/2-mnX*sc, oy=pad-mnY*sc;
+  const tx=x=>x*sc+ox, ty=y=>y*sc+oy;
+  const r=Math.max(R*Math.min(sc,1),14);
+  const fs=Math.max(Math.floor(r*.65),10);
+
+  // edges
+  ps.forEach(n=>{
+    ['left','right'].forEach(d=>{
+      const ch=n[d];
+      if(!ch||ch===isNil||ch.val==null)return;
+      const isHi=(n._st&&n._st!=='st-def')||(ch._st&&ch._st!=='st-def');
+      const l=svgEl('line',{
+        x1:tx(n._x),y1:ty(n._y),x2:tx(ch._x),y2:ty(ch._y),
+        class:isHi?'edge-hi':'edge'
+      });
+      g.appendChild(l);
+    });
+  });
+
+  // nodes
+  ps.forEach(n=>{
+    const cx=tx(n._x), cy=ty(n._y);
+    const cls=classOf?classOf(n):'st-def';
+    const ng=svgEl('g',{class:`nd ${cls}`});
+
+    const c=svgEl('circle',{cx,cy,r});
+    ng.appendChild(c);
+
+    const t=svgEl('text',{x:cx,y:cy,'font-size':fs});
+    t.textContent=n.val;
+    ng.appendChild(t);
+
+    if(subOf){
+      const sub=subOf(n);
+      if(sub){
+        const sl=svgEl('text',{x:cx,y:cy+r+12,class:'lbl','text-anchor':'middle'});
+        sl.textContent=sub;
+        ng.appendChild(sl);
+      }
+    }
+    g.appendChild(ng);
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// OBSERVATIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function obsShow(what,why){
+  OBS_N++;
+  document.getElementById('obs-what').textContent=what;
+  const wy=document.getElementById('obs-why');
+  if(why){wy.textContent=why;wy.style.display='block';}else{wy.style.display='none';}
+  const row=document.createElement('div');
+  row.className='obs-row';
+  row.innerHTML=`<div class="obs-row-n">#${OBS_N}</div>
+    <div class="obs-row-what">${what}</div>
+    ${why?`<div class="obs-row-why">${why}</div>`:''}`;
+  document.getElementById('obs-log').prepend(row);
+}
+function obsClear(){
+  OBS_N=0;
+  document.getElementById('obs-what').textContent='Perform an operation to begin.';
+  document.getElementById('obs-why').style.display='none';
+  document.getElementById('obs-log').innerHTML='';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STEP PLAYER — frame-by-frame, instant redraw
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function loadSteps(s){
+  STEPS=s; SI=0;
+  if(!s.length)return;
+  document.getElementById('step-bar').style.display='flex';
+  showStep(0);
+}
+function showStep(i){
+  if(!STEPS.length)return;
+  const s=STEPS[i];
+  document.getElementById('sc').textContent=`Step ${i+1} / ${STEPS.length}`;
+  if(s.draw)s.draw();          // instant redraw — no animation
+  obsShow(s.what, s.why||'');
+}
+function sNext(){
+  if(SI<STEPS.length-1){SI++;showStep(SI);}
+  else stopAuto();
+}
+function sPrev(){stopAuto();if(SI>0){SI--;showStep(SI);}}
+function sFirst(){stopAuto();SI=0;showStep(0);}
+function sLast(){stopAuto();SI=STEPS.length-1;showStep(SI);}
+function sAuto(){
+  if(AUTO){stopAuto();return;}
+  document.getElementById('autoBtn').textContent='⏸ Pause';
+  const spd=parseInt(document.getElementById('spd').value);
+  const delay=Math.max(300,1300-spd*100);
+  AUTO=setInterval(()=>{if(SI<STEPS.length-1){SI++;showStep(SI);}else stopAuto();},delay);
+}
+function stopAuto(){
+  if(AUTO){clearInterval(AUTO);AUTO=null;}
+  document.getElementById('autoBtn').textContent='▶ Auto';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CONTROLS BUILDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildCtrl(cfg){
+  const bar=document.getElementById('ctrl-bar');
+  bar.innerHTML='';
+  if(cfg.numInput!==false){
+    const inp=document.createElement('input');
+    inp.className='inp'; inp.type='number'; inp.id='numInp';
+    inp.placeholder=cfg.numPH||'Value…'; inp.min=0; inp.max=999;
+    inp.onkeydown=e=>{if(e.key==='Enter'&&cfg.onInsert)cfg.onInsert();};
+    bar.appendChild(inp);
+  }
+  if(cfg.strInput){
+    const inp=document.createElement('input');
+    inp.className='inp inp-wide'; inp.type='text'; inp.id='strInp';
+    inp.placeholder=cfg.strPH||'Text…';
+    bar.appendChild(inp);
+  }
+  (cfg.btns||[]).forEach(b=>{
+    const btn=document.createElement('button');
+    btn.className='btn '+(b.cls||''); btn.textContent=b.lbl; btn.onclick=b.fn;
+    bar.appendChild(btn);
+  });
+  if(cfg.presets&&cfg.presets.length){
+    bar.appendChild(mkSep());
+    const pl=document.createElement('span');pl.className='plabel';pl.textContent='Presets:';bar.appendChild(pl);
+    cfg.presets.forEach(p=>{
+      const btn=document.createElement('button');
+      btn.className='btn btn-sm';btn.textContent=p.lbl;btn.onclick=p.fn;bar.appendChild(btn);
+    });
+  }
+  bar.appendChild(mkSep());
+  mkBtn(bar,'Reset','btn btn-sm',cfg.onReset||function(){});
+  if(cfg.onRandom!==false)mkBtn(bar,'🎲 Random','btn btn-sm',cfg.onRandom||function(){});
+}
+function mkSep(){const s=document.createElement('div');s.className='sep';return s;}
+function mkBtn(par,lbl,cls,fn){const b=document.createElement('button');b.className=cls;b.textContent=lbl;b.onclick=fn;par.appendChild(b);return b;}
+function numVal(){return parseInt(document.getElementById('numInp')?.value)||null;}
+function strVal(){return(document.getElementById('strInp')?.value||'').trim();}
+function clrNum(){const i=document.getElementById('numInp');if(i)i.value='';}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AVL TREE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+class AVLNode{constructor(v){this.val=v;this.left=null;this.right=null;this.height=1;this._st='st-def';}}
+class AVL{
+  constructor(){this.root=null;}
+  h(n){return n?n.height:0;}
+  upH(n){n.height=1+Math.max(this.h(n.left),this.h(n.right));}
+  bf(n){return n?this.h(n.left)-this.h(n.right):0;}
+  rotR(y){const x=y.left,T=x.right;x.right=y;y.left=T;this.upH(y);this.upH(x);return x;}
+  rotL(x){const y=x.right,T=y.left;y.left=x;x.right=T;this.upH(x);this.upH(y);return y;}
+  walk(n,fn){if(!n)return;fn(n);this.walk(n.left,fn);this.walk(n.right,fn);}
+  reset(){this.walk(this.root,n=>n._st='st-def');}
+  mark(v,s){this.walk(this.root,n=>{if(n.val===v)n._st=s;});}
+  draw(hi=null,sub=true){renderSVG(this.root,null,n=>n._st||'st-def',sub?n=>`bf:${this.bf(n)}`:null);}
+
+  insert(val){
+    const S=[];
+    this.root=this._ins(this.root,val,S);
+    this.reset();
+    S.push({what:`✓ Insert ${val} complete. Tree height: ${this.h(this.root)}`,
+            why:`All balance factors are back in [-1, 0, +1]. AVL property fully restored.`,
+            draw:()=>{this.reset();this.draw();}});
+    return S;
+  }
+  _ins(n,val,S){
+    if(!n){
+      const nd=new AVLNode(val); nd._st='st-new';
+      S.push({what:`Inserted ${val} as a new leaf node`,
+              why:`BST insertion: traverse to the correct position (like a BST), place the new node as a leaf. New nodes are highlighted in green.`,
+              draw:()=>{this.reset();this.mark(val,'st-new');this.draw();}});
+      return nd;
+    }
+    if(val<n.val){
+      S.push({what:`${val} < ${n.val}  →  go LEFT`,
+              why:`BST property: values smaller than the current node always go into the left subtree.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-path');this.draw();}});
+      n.left=this._ins(n.left,val,S);
+    } else if(val>n.val){
+      S.push({what:`${val} > ${n.val}  →  go RIGHT`,
+              why:`BST property: values larger than the current node always go into the right subtree.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-path');this.draw();}});
+      n.right=this._ins(n.right,val,S);
+    } else return n;
+    this.upH(n);
+    const bf=this.bf(n);
+    if(bf>1&&val<n.left.val){
+      S.push({what:`⚠ LL Imbalance at node ${n.val}  (bf = +${bf})`,
+              why:`Left subtree is 2 levels deeper than right. Balance Factor = Left Height − Right Height = +${bf}. This is the Left-Left case: the new node is in the left subtree of the left child. Fix: single Right Rotation at ${n.val}.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-rot');this.draw();}});
+      const r=this.rotR(n);
+      S.push({what:`Right Rotation done — ${r.val} is new subtree root`,
+              why:`After rotating right at ${n.val}: ${r.val} moves up, ${r.right.val} moves down. Balance factors normalized. This single rotation fixed the LL imbalance.`,
+              draw:()=>{this.reset();this.mark(r.val,'st-hi');this.draw();}});
+      return r;
+    }
+    if(bf<-1&&val>n.right.val){
+      S.push({what:`⚠ RR Imbalance at node ${n.val}  (bf = ${bf})`,
+              why:`Right subtree is 2 levels deeper. Balance Factor = ${bf}. Right-Right case: new node is in the right subtree of the right child. Fix: single Left Rotation at ${n.val}.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-rot');this.draw();}});
+      const r=this.rotL(n);
+      S.push({what:`Left Rotation done — ${r.val} is new subtree root`,
+              why:`After rotating left at ${n.val}: ${r.val} moves up, ${r.left.val} moves down. The RR imbalance is fixed with this single rotation.`,
+              draw:()=>{this.reset();this.mark(r.val,'st-hi');this.draw();}});
+      return r;
+    }
+    if(bf>1&&val>n.left.val){
+      S.push({what:`⚠ LR Imbalance at node ${n.val}  (bf = +${bf})`,
+              why:`Left-Right case: new node is in the RIGHT subtree of the LEFT child. Two rotations needed. Step 1: Left Rotate at ${n.left.val} to convert this into an LL case.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-rot');this.mark(n.left?.val,'st-rec');this.draw();}});
+      n.left=this.rotL(n.left);
+      S.push({what:`Step 2: Right Rotate at ${n.val} to complete LR fix`,
+              why:`The Left Rotation converted LR into LL. Now apply Right Rotation at the imbalanced node ${n.val} to fully restore balance.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-rot');this.draw();}});
+      const r=this.rotR(n);
+      S.push({what:`LR Double Rotation complete — ${r.val} is new subtree root`,
+              why:`Two rotations resolved the Left-Right imbalance. Every node's balance factor is now in [-1, 0, +1].`,
+              draw:()=>{this.reset();this.mark(r.val,'st-hi');this.draw();}});
+      return r;
+    }
+    if(bf<-1&&val<n.right.val){
+      S.push({what:`⚠ RL Imbalance at node ${n.val}  (bf = ${bf})`,
+              why:`Right-Left case: new node is in the LEFT subtree of the RIGHT child. Two rotations needed. Step 1: Right Rotate at ${n.right.val} to convert to an RR case.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-rot');this.mark(n.right?.val,'st-rec');this.draw();}});
+      n.right=this.rotR(n.right);
+      S.push({what:`Step 2: Left Rotate at ${n.val} to complete RL fix`,
+              why:`The Right Rotation converted RL into RR. Now apply Left Rotation at ${n.val} to fully restore balance.`,
+              draw:()=>{this.reset();this.mark(n.val,'st-rot');this.draw();}});
+      const r=this.rotL(n);
+      S.push({what:`RL Double Rotation complete — ${r.val} is new subtree root`,
+              why:`Two rotations resolved the Right-Left imbalance. Balance restored across the tree.`,
+              draw:()=>{this.reset();this.mark(r.val,'st-hi');this.draw();}});
+      return r;
+    }
+    return n;
+  }
+
+  search(val){
+    const S=[]; let cur=this.root; this.reset();
+    while(cur){
+      if(val===cur.val){
+        S.push({what:`✓ Found ${val} in the AVL Tree!`,
+                why:`Search complete. The node was located by following BST search path from root.`,
+                draw:()=>{this.reset();this.mark(val,'st-fnd');this.draw();}});
+        return S;
+      }
+      const d=val<cur.val?'LEFT':'RIGHT';
+      S.push({what:`${val} ${val<cur.val?'<':'>'} ${cur.val}  →  go ${d}`,
+              why:`BST search: compare target with current node, go left if smaller, right if larger.`,
+              draw:()=>{this.reset();this.mark(cur.val,'st-path');this.draw();}});
+      cur=cur[val<cur.val?'left':'right'];
+    }
+    S.push({what:`✗ ${val} not found in tree`,
+            why:`Reached a null pointer — the value does not exist in this AVL Tree.`,
+            draw:()=>{this.reset();this.draw();}});
+    return S;
+  }
+
+  delete(val){
+    const S=[];
+    S.push({what:`Deleting ${val}…`,
+            why:`We locate the node, remove it using BST delete rules, then rebalance upward.`,
+            draw:()=>{this.reset();this.mark(val,'st-del');this.draw();}});
+    this.root=this._del(this.root,val,S);
+    this.reset();
+    S.push({what:`✓ Delete ${val} complete`,
+            why:`Node removed and all balance factors restored to [-1, 0, +1] range.`,
+            draw:()=>{this.reset();this.draw();}});
+    return S;
+  }
+  _min(n){while(n.left)n=n.left;return n;}
+  _del(n,val,S){
+    if(!n)return null;
+    if(val<n.val)n.left=this._del(n.left,val,S);
+    else if(val>n.val)n.right=this._del(n.right,val,S);
+    else{
+      if(!n.left||!n.right)return n.left||n.right;
+      const s=this._min(n.right);
+      S.push({what:`Node ${val} has two children → replace with in-order successor ${s.val}`,
+              why:`When a node has 2 children, we replace its value with the in-order successor (smallest value in right subtree: ${s.val}), then delete the successor node instead.`,
+              draw:()=>{this.reset();this.mark(s.val,'st-hi');this.draw();}});
+      n.val=s.val; n.right=this._del(n.right,s.val,S);
+    }
+    this.upH(n);
+    const bf=this.bf(n);
+    if(bf>1&&this.bf(n.left)>=0)return this.rotR(n);
+    if(bf>1&&this.bf(n.left)<0){n.left=this.rotL(n.left);return this.rotR(n);}
+    if(bf<-1&&this.bf(n.right)<=0)return this.rotL(n);
+    if(bf<-1&&this.bf(n.right)>0){n.right=this.rotR(n.right);return this.rotL(n);}
+    return n;
+  }
+}
+const avl=new AVL();
+function initAVL(){
+  buildCtrl({
+    numPH:'Number…',
+    onInsert:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(avl.insert(v));},
+    btns:[
+      {lbl:'Insert',cls:'btn-blue',fn:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(avl.insert(v));}},
+      {lbl:'Delete',cls:'btn-red', fn:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(avl.delete(v));}},
+      {lbl:'Search',cls:'btn-grn', fn:()=>{const v=numVal();if(!v)return;loadSteps(avl.search(v));}},
+    ],
+    presets:[
+      {lbl:'LL',fn:()=>{avl.root=null;[30,20,10].forEach(v=>avl.insert(v));avl.reset();avl.draw();obsShow('LL Preset: 30 → 20 → 10','Inserting in decreasing order causes a Left-Left imbalance. Click Insert 10 with step mode to see the Right Rotation.');}},
+      {lbl:'RR',fn:()=>{avl.root=null;[10,20,30].forEach(v=>avl.insert(v));avl.reset();avl.draw();obsShow('RR Preset: 10 → 20 → 30','Increasing order causes Right-Right imbalance. Fixed by Left Rotation.');}},
+      {lbl:'LR',fn:()=>{avl.root=null;[30,10,20].forEach(v=>avl.insert(v));avl.reset();avl.draw();obsShow('LR Preset: 30 → 10 → 20','Left-Right case needs two rotations: Left Rotate then Right Rotate.');}},
+      {lbl:'RL',fn:()=>{avl.root=null;[10,30,20].forEach(v=>avl.insert(v));avl.reset();avl.draw();obsShow('RL Preset: 10 → 30 → 20','Right-Left case: Right Rotate then Left Rotate.');}},
+      {lbl:'Full Tree',fn:()=>{avl.root=null;[50,30,70,20,40,60,80,10,25].forEach(v=>avl.insert(v));avl.reset();avl.draw();obsShow('Full 9-node AVL Tree loaded','Multiple levels, all balanced. Try deleting a node to see rebalancing.');}},
+    ],
+    onReset:()=>{avl.root=null;svgClear();obsClear();STEPS=[];document.getElementById('step-bar').style.display='none';stopAuto();},
+    onRandom:()=>{
+      avl.root=null;
+      const vs=[...new Set(Array.from({length:8},()=>Math.floor(Math.random()*90)+5))];
+      vs.forEach(v=>avl.insert(v)); avl.reset(); avl.draw();
+      obsShow(`Random tree: ${vs.join(', ')}`,'8 unique random values inserted and balanced automatically.');
+    }
+  });
+  avl.draw();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// RED-BLACK TREE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const RED='red',BLK='black';
+class RBN{constructor(v){this.val=v;this.color=RED;this.left=null;this.right=null;this.parent=null;this._st=null;}}
+class RBT{
+  constructor(){this.NIL=new RBN(null);this.NIL.color=BLK;this.root=this.NIL;}
+  walk(n,fn){if(!n||n===this.NIL)return;fn(n);this.walk(n.left,fn);this.walk(n.right,fn);}
+  reset(){this.walk(this.root,n=>n._st=null);}
+  mark(v,s){this.walk(this.root,n=>{if(n.val===v)n._st=s;});}
+  cls(n){if(!n||n===this.NIL||n.val==null)return null;return n._st||(n.color===RED?'st-rb-r':'st-rb-b');}
+  draw(){renderSVG(this.root,this.NIL,n=>this.cls(n),n=>n.color===RED?'R':'B');}
+  rotL(x){const y=x.right;x.right=y.left;if(y.left!==this.NIL)y.left.parent=x;y.parent=x.parent;if(!x.parent)this.root=y;else if(x===x.parent.left)x.parent.left=y;else x.parent.right=y;y.left=x;x.parent=y;}
+  rotR(x){const y=x.left;x.left=y.right;if(y.right!==this.NIL)y.right.parent=x;y.parent=x.parent;if(!x.parent)this.root=y;else if(x===x.parent.right)x.parent.right=y;else x.parent.left=y;y.right=x;x.parent=y;}
+
+  insert(val){
+    const S=[];
+    const z=new RBN(val);z.left=this.NIL;z.right=this.NIL;
+    let y=null,x=this.root;
+    while(x!==this.NIL){
+      y=x;
+      if(z.val<x.val){
+        S.push({what:`${val} < ${x.val}  →  go LEFT`,why:`BST property: smaller values go left.`,draw:()=>{this.reset();this.mark(x.val,'st-path');this.draw();}});
+        x=x.left;
+      } else if(z.val>x.val){
+        S.push({what:`${val} > ${x.val}  →  go RIGHT`,why:`BST property: larger values go right.`,draw:()=>{this.reset();this.mark(x.val,'st-path');this.draw();}});
+        x=x.right;
+      } else return S;
+    }
+    z.parent=y;
+    if(!y)this.root=z;
+    else if(z.val<y.val)y.left=z;
+    else y.right=z;
+    S.push({what:`Placed ${val} as a RED node`,why:`New nodes are always inserted RED. RED adds no black-height, so Properties 1,2,4,5 remain satisfied. Only Property 3 (no consecutive reds) may be violated.`,draw:()=>{this.reset();this.mark(val,'st-new');this.draw();}});
+    if(!z.parent){z.color=BLK;S.push({what:`${val} is root → color it BLACK`,why:`Property 2: The root must always be BLACK. Simple fix.`,draw:()=>{this.reset();this.draw();}});return S;}
+    if(!z.parent.parent)return S;
+    this._fix(z,S);
+    S.push({what:`✓ Insert ${val} complete — all 5 RBT properties satisfied`,why:`P1: Every node is R/B ✓  P2: Root is BLACK ✓  P3: No consecutive RED nodes ✓  P4: Equal black-height on all paths ✓`,draw:()=>{this.reset();this.mark(val,'st-hi');this.draw();}});
+    return S;
+  }
+  _fix(z,S){
+    while(z.parent&&z.parent.color===RED){
+      if(z.parent===z.parent.parent.left){
+        const u=z.parent.parent.right;
+        if(u.color===RED){
+          S.push({what:`Case 1: Uncle ${u.val!==null?u.val:'NIL'} is RED → Recolor`,why:`When the uncle is RED, we can push the "redness" up: color parent and uncle BLACK, grandparent RED. Then re-check from grandparent. No rotations needed.`,draw:()=>{this.reset();if(u.val!==null)this.mark(u.val,'st-rec');this.mark(z.parent.val,'st-rec');this.mark(z.parent.parent.val,'st-rec');this.draw();}});
+          z.parent.color=BLK;u.color=BLK;z.parent.parent.color=RED;z=z.parent.parent;
+        } else {
+          if(z===z.parent.right){
+            S.push({what:`Case 2: Uncle BLACK, ${z.val} is inner (right) child → Left Rotate at ${z.parent.val}`,why:`Left-Right situation. We can't fix directly — rotate to convert this into Case 3 (outer child). This rotation doesn't fix the violation yet, it transforms it.`,draw:()=>{this.reset();this.mark(z.parent.val,'st-rot');this.draw();}});
+            z=z.parent;this.rotL(z);
+          }
+          S.push({what:`Case 3: Uncle BLACK, outer (left) child → Recolor + Right Rotate at ${z.parent.parent.val}`,why:`Recolor: parent becomes BLACK, grandparent becomes RED. Then Right Rotate at grandparent. This permanently fixes the consecutive-red violation without breaking black-height.`,draw:()=>{this.reset();this.mark(z.parent.val,'st-rot');this.mark(z.parent.parent.val,'st-rot');this.draw();}});
+          z.parent.color=BLK;z.parent.parent.color=RED;this.rotR(z.parent.parent);
+        }
+      } else {
+        const u=z.parent.parent.left;
+        if(u.color===RED){
+          S.push({what:`Case 1 (mirror): Uncle ${u.val!==null?u.val:'NIL'} is RED → Recolor`,why:`Mirror of Case 1. Color parent and uncle BLACK, grandparent RED. Move up to grandparent.`,draw:()=>{this.reset();if(u.val!==null)this.mark(u.val,'st-rec');this.mark(z.parent.val,'st-rec');this.mark(z.parent.parent.val,'st-rec');this.draw();}});
+          z.parent.color=BLK;u.color=BLK;z.parent.parent.color=RED;z=z.parent.parent;
+        } else {
+          if(z===z.parent.left){
+            S.push({what:`Case 2 (mirror): Inner child → Right Rotate at ${z.parent.val}`,why:`Right-Left situation. Right Rotate to convert to Case 3 mirror.`,draw:()=>{this.reset();this.mark(z.parent.val,'st-rot');this.draw();}});
+            z=z.parent;this.rotR(z);
+          }
+          S.push({what:`Case 3 (mirror): Recolor + Left Rotate at ${z.parent.parent.val}`,why:`Recolor and Left Rotate. Permanently fixes the violation for the right-side mirror case.`,draw:()=>{this.reset();this.mark(z.parent.parent.val,'st-rot');this.draw();}});
+          z.parent.color=BLK;z.parent.parent.color=RED;this.rotL(z.parent.parent);
+        }
+      }
+      if(z===this.root)break;
+    }
+    this.root.color=BLK;
+  }
+  search(val){
+    const S=[];let cur=this.root;this.reset();
+    while(cur!==this.NIL){
+      if(val===cur.val){S.push({what:`✓ Found ${val}! Color: ${cur.color.toUpperCase()}`,why:`Search complete.`,draw:()=>{this.reset();this.mark(val,'st-fnd');this.draw();}});return S;}
+      const d=val<cur.val;
+      S.push({what:`${val} ${d?'<':'>'} ${cur.val}  →  go ${d?'LEFT':'RIGHT'}`,why:'BST search property.',draw:()=>{this.reset();this.mark(cur.val,'st-path');this.draw();}});
+      cur=cur[d?'left':'right'];
+    }
+    S.push({what:`✗ ${val} not found`,why:'Reached NIL — value absent.',draw:()=>{this.reset();this.draw();}});
+    return S;
+  }
+}
+const rbt=new RBT();
+function initRBT(){
+  buildCtrl({
+    numPH:'Number…',
+    onInsert:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(rbt.insert(v));},
+    btns:[
+      {lbl:'Insert',cls:'btn-blue',fn:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(rbt.insert(v));}},
+      {lbl:'Search',cls:'btn-grn', fn:()=>{const v=numVal();if(!v)return;loadSteps(rbt.search(v));}},
+    ],
+    presets:[
+      {lbl:'Demo 1',fn:()=>{rbt.root=rbt.NIL;[10,20,30,15].forEach(v=>rbt.insert(v));rbt.reset();rbt.draw();obsShow('Demo 1: 10,20,30,15','Shows recoloring (Case 1) and rotation (Case 3). Insert 10 step-by-step.');}},
+      {lbl:'Demo 2',fn:()=>{rbt.root=rbt.NIL;[7,3,18,10,22,8,11,26].forEach(v=>rbt.insert(v));rbt.reset();rbt.draw();obsShow('Demo 2: 8-node RBT','Complex tree showing all 3 fixup cases.');}},
+    ],
+    onReset:()=>{rbt.root=rbt.NIL;svgClear();obsClear();STEPS=[];document.getElementById('step-bar').style.display='none';stopAuto();},
+    onRandom:()=>{
+      rbt.root=rbt.NIL;
+      const vs=[...new Set(Array.from({length:7},()=>Math.floor(Math.random()*90)+5))];
+      vs.forEach(v=>rbt.insert(v));rbt.reset();rbt.draw();
+      obsShow(`Random RBT: ${vs.join(', ')}`,'');
+    }
+  });
+  rbt.draw();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HEAP
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+class Heap{
+  constructor(){this.A=[];this.mode='min';}
+  cmp(a,b){return this.mode==='min'?a<b:a>b;}
+  // Build node tree from array for SVG
+  _node(i){
+    if(i>=this.A.length)return null;
+    const n={val:this.A[i],left:this._node(2*i+1),right:this._node(2*i+2),_st:'st-def'};
+    return n;
+  }
+  draw(hi=[],sw=false){
+    const root=this._node(0);
+    if(root){
+      // mark highlights
+      function mark(n,idxs,i,sw){
+        if(!n)return;
+        if(idxs.includes(i))n._st=sw?'st-rot':'st-hi';
+        mark(n.left,idxs,2*i+1,sw);mark(n.right,idxs,2*i+2,sw);
+      }
+      mark(root,hi,0,sw);
+    }
+    renderSVG(root,null,n=>n._st||'st-def',null);
+    // array bar
+    const bb=document.getElementById('bottom-bar');
+    bb.style.display='flex';
+    bb.innerHTML='<span class="plabel" style="margin-right:6px;">Array:</span>'+
+      this.A.map((v,i)=>`<div class="hcell ${hi.includes(i)?(sw?'sw':'hi'):''}">
+        <div class="hcell-v">${v}</div><div class="hcell-i">[${i}]</div></div>`).join('');
+  }
+  insert(val){
+    const S=[];
+    this.A.push(val);let i=this.A.length-1;
+    S.push({what:`Insert ${val} at index [${i}] — end of array`,why:`Complete Binary Tree property: always add at the end to maintain the shape. Now we must fix the heap order by moving it up (Heapify-Up).`,draw:()=>this.draw([i])});
+    while(i>0){
+      const p=Math.floor((i-1)/2);
+      if(this.cmp(this.A[i],this.A[p])){
+        S.push({what:`${this.A[i]} ${this.mode==='min'?'<':'>'} parent ${this.A[p]} at [${p}]  →  SWAP  (Heapify-Up)`,why:`Heap property violated: child is ${this.mode==='min'?'smaller':'larger'} than its parent. We swap them and continue checking upward until the heap property holds.`,draw:()=>this.draw([i,p],true)});
+        [this.A[i],this.A[p]]=[this.A[p],this.A[i]];i=p;
+        S.push({what:`After swap — ${this.A[i]} now at index [${i}]`,why:`Check parent again. Continue Heapify-Up until heap property is restored or we reach the root.`,draw:()=>this.draw([i])});
+      } else break;
+    }
+    S.push({what:`✓ ${val} inserted. ${this.mode==='min'?'Min':'Max'}-Heap property restored.`,why:`All parent nodes satisfy the heap property. Root is the ${this.mode==='min'?'minimum':'maximum'}: ${this.A[0]}.`,draw:()=>this.draw([])});
+    return S;
+  }
+  extract(){
+    if(!this.A.length)return[];
+    const S=[];const root=this.A[0];
+    S.push({what:`Extract ${this.mode==='min'?'Min':'Max'} = ${root} from root`,why:`In a heap, the ${this.mode==='min'?'minimum':'maximum'} is always at the root (index 0). We remove it and need to restore heap structure.`,draw:()=>this.draw([0])});
+    this.A[0]=this.A.pop();
+    if(!this.A.length){renderSVG(null,null,null,null);document.getElementById('bottom-bar').innerHTML='';return S;}
+    S.push({what:`Move last element ${this.A[0]} to root`,why:`Replace root with last element to maintain Complete Binary Tree shape. Now Heapify-Down to restore order.`,draw:()=>this.draw([0])});
+    let i=0;
+    while(true){
+      const l=2*i+1,r=2*i+2;let t=i;
+      if(l<this.A.length&&this.cmp(this.A[l],this.A[t]))t=l;
+      if(r<this.A.length&&this.cmp(this.A[r],this.A[t]))t=r;
+      if(t===i)break;
+      S.push({what:`${this.A[i]} at [${i}] violates heap → swap with ${this.A[t]} at [${t}]  (Heapify-Down)`,why:`Parent ${this.A[i]} is ${this.mode==='min'?'larger':'smaller'} than child ${this.A[t]}. Swap with the ${this.mode==='min'?'smallest':'largest'} child and continue downward.`,draw:()=>this.draw([i,t],true)});
+      [this.A[i],this.A[t]]=[this.A[t],this.A[i]];i=t;
+      S.push({what:`Swapped. Now checking from index [${i}]`,why:`Continue Heapify-Down from new position.`,draw:()=>this.draw([i])});
+    }
+    S.push({what:`✓ Extracted ${root}. New ${this.mode==='min'?'min':'max'} is ${this.A[0]}.`,why:`Heap property restored at all levels. Every parent satisfies the ${this.mode==='min'?'min':'max'} heap condition.`,draw:()=>this.draw([])});
+    return S;
+  }
+}
+const hp=new Heap();
+function initHeap(){
+  const modeToggle=()=>{
+    hp.mode=hp.mode==='min'?'max':'min';hp.A=[];
+    document.getElementById('heapModeBtn').textContent=`Mode: ${hp.mode.toUpperCase()}`;
+    hp.draw([]);obsClear();obsShow(`Switched to ${hp.mode.toUpperCase()} Heap — tree reset`,'');
+  };
+  buildCtrl({
+    numPH:'Number…',
+    onInsert:()=>{const v=numVal();if(v===null)return;clrNum();loadSteps(hp.insert(v));},
+    btns:[
+      {lbl:'Insert',cls:'btn-blue',fn:()=>{const v=numVal();if(v===null)return;clrNum();loadSteps(hp.insert(v));}},
+      {lbl:'Extract Root',cls:'btn-red',fn:()=>loadSteps(hp.extract())},
+    ],
+    presets:[
+      {lbl:'Build Heap',fn:()=>{hp.A=[];[15,10,20,8,25,3,18].forEach(v=>hp.insert(v));hp.draw([]);obsShow('Heap built: 15,10,20,8,25,3,18','Root is always the min/max. Try Extract Root.');}},
+    ],
+    onReset:()=>{hp.A=[];svgClear();document.getElementById('bottom-bar').innerHTML='';document.getElementById('bottom-bar').style.display='none';obsClear();STEPS=[];document.getElementById('step-bar').style.display='none';stopAuto();},
+    onRandom:()=>{hp.A=[];const vs=Array.from({length:7},()=>Math.floor(Math.random()*90)+5);vs.forEach(v=>hp.insert(v));hp.draw([]);obsShow(`Random heap: ${vs.join(', ')}`,'');}
+  });
+  // mode button
+  const mb=mkBtn(document.getElementById('ctrl-bar'),'Mode: MIN','btn btn-sm',modeToggle);
+  mb.id='heapModeBtn';
+  document.getElementById('bottom-bar').style.display='flex';
+  hp.draw([]);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HUFFMAN
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+class HN{constructor(ch,f){this.val=ch?`${ch}(${f})`:String(f);this.char=ch;this.freq=f;this.left=null;this.right=null;this._st='st-def';}}
+function buildHuff(text){
+  const S=[];
+  const freq={};for(const c of text)freq[c]=(freq[c]||0)+1;
+  S.push({what:`Step 1: Count character frequencies`,why:`Huffman encoding assigns shorter bit codes to more frequent characters. Input: "${text}". Frequencies: ${Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(([c,f])=>`'${c}'→${f}`).join(', ')}`,draw:()=>svgClear()});
+  let nodes=Object.entries(freq).map(([c,f])=>new HN(c,f)).sort((a,b)=>a.freq-b.freq);
+  S.push({what:`Step 2: Create ${nodes.length} leaf nodes, sorted by frequency (ascending)`,why:`Each unique character = one leaf node. We use a Min-Priority Queue — always merge the two with lowest frequency first. This greedy choice minimizes total code length.`,draw:()=>{
+    // show leaves as a flat list
+    let root={val:nodes[0].val,left:null,right:null,_st:'st-new'};
+    let cur=root;
+    for(let i=1;i<nodes.length;i++){cur.right={val:nodes[i].val,left:null,right:null,_st:'st-def'};cur=cur.right;}
+    renderSVG(root,null,n=>n._st||'st-def',null);
+  }});
+  let stepRoot=null;
+  while(nodes.length>1){
+    const a=nodes.shift(),b=nodes.shift();
+    const m=new HN(null,a.freq+b.freq);m.left=a;m.right=b;
+    a._st='st-rot';b._st='st-rot';m._st='st-hi';
+    S.push({what:`Merge '${a.val}' + '${b.val}'  →  internal node [${m.freq}]`,why:`Always merge the two smallest-frequency nodes. Greedy property: this guarantees the minimum total weighted path length (optimal compression). New internal node has frequency ${a.freq}+${b.freq}=${m.freq}.`,draw:()=>{renderSVG(m,null,n=>n._st||'st-def',null);}});
+    nodes.push(m);nodes.sort((a,b)=>a.freq-b.freq);
+    stepRoot=m;
+  }
+  const huffRoot=nodes[0];
+  const codes={};
+  function gen(n,code){if(!n)return;if(n.char){codes[n.char]=code||'0';return;}gen(n.left,code+'0');gen(n.right,code+'1');}
+  gen(huffRoot,'');
+  S.push({what:`✓ Huffman Tree built!`,why:`Codes (left edge=0, right edge=1): ${Object.entries(codes).sort((a,b)=>a[1].length-b[1].length).map(([c,cd])=>`'${c}'→${cd}`).join('  |  ')}`,draw:()=>{huffRoot._st='st-hi';renderSVG(huffRoot,null,n=>n._st||'st-def',n=>n.char?codes[n.char]:'');}});
+  const enc=text.split('').map(c=>codes[c]).join('');
+  const saved=((1-enc.length/(text.length*8))*100).toFixed(1);
+  S.push({what:`Encoded "${text}" → ${enc.length} bits  (original: ${text.length*8} bits, saved: ${saved}%)`,why:`Each character replaced by its Huffman code. Frequent characters get shorter codes → compression. The more skewed the frequency distribution, the better the compression ratio.`,draw:()=>renderSVG(huffRoot,null,n=>n._st||'st-def',n=>n.char?codes[n.char]:'')});
+  return S;
+}
+function initHuff(){
+  buildCtrl({
+    numInput:false,strInput:true,strPH:'Enter text…',
+    btns:[{lbl:'Build Huffman Tree',cls:'btn-blue',fn:()=>{const t=strVal();if(!t)return;loadSteps(buildHuff(t.toUpperCase()));}}],
+    presets:[
+      {lbl:'ABRACADABRA',fn:()=>{document.getElementById('strInp').value='ABRACADABRA';loadSteps(buildHuff('ABRACADABRA'));}},
+      {lbl:'MISSISSIPPI',fn:()=>{document.getElementById('strInp').value='MISSISSIPPI';loadSteps(buildHuff('MISSISSIPPI'));}},
+      {lbl:'HELLO WORLD',fn:()=>{document.getElementById('strInp').value='HELLO WORLD';loadSteps(buildHuff('HELLO WORLD'));}},
+    ],
+    onReset:()=>{svgClear();obsClear();STEPS=[];document.getElementById('step-bar').style.display='none';stopAuto();},
+    onRandom:false
+  });
+  svgClear();
+  const t=document.createElementNS(NS,'text');
+  t.setAttribute('x',450);t.setAttribute('y',250);t.setAttribute('text-anchor','middle');
+  t.setAttribute('dominant-baseline','middle');t.setAttribute('fill','#4d6480');
+  t.setAttribute('font-family','JetBrains Mono');t.setAttribute('font-size',14);
+  t.textContent='Enter text or pick a preset to build the Huffman encoding tree';
+  document.getElementById('TR').appendChild(t);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SPLAY TREE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+class SN{constructor(v){this.val=v;this.left=null;this.right=null;this._st='st-def';}}
+class Splay{
+  constructor(){this.root=null;}
+  walk(n,fn){if(!n)return;fn(n);this.walk(n.left,fn);this.walk(n.right,fn);}
+  reset(){this.walk(this.root,n=>n._st='st-def');}
+  mark(v,s){this.walk(this.root,n=>{if(n.val===v)n._st=s;});}
+  draw(){renderSVG(this.root,null,n=>n._st||'st-def',null);}
+  rotR(x){const y=x.left;x.left=y.right;y.right=x;return y;}
+  rotL(x){const y=x.right;x.right=y.left;y.left=x;return y;}
+
+  splay(root,val,S){
+    if(!root||root.val===val)return root;
+    if(val<root.val){
+      if(!root.left)return root;
+      if(val<root.left.val){
+        root.left.left=this.splay(root.left.left,val,S);
+        S.push({what:`Zig-Zig (Left-Left): Right Rotate at ${root.val}, then Right Rotate again`,why:`Target ${val} is in the left-left position (grandchild). Zig-Zig: apply two right rotations. This moves the target two levels up and keeps the tree balanced amortized.`,draw:()=>{this.reset();if(root.left)root.left._st='st-rot';root._st='st-rot';this.draw();}});
+        root=this.rotR(root);
+      } else if(val>root.left.val){
+        root.left.right=this.splay(root.left.right,val,S);
+        if(root.left.right){
+          S.push({what:`Zig-Zag (Left-Right): Left Rotate at ${root.left.val}, then Right Rotate at ${root.val}`,why:`Target ${val} is in the left-right position. Zig-Zag: two different rotations. First rotate left child left, then rotate root right. This is why Splay is more complex than AVL.`,draw:()=>{this.reset();if(root.left)root.left._st='st-rot';root._st='st-rot';this.draw();}});
+          root.left=this.rotL(root.left);
+        }
+      }
+      return root.left?this.rotR(root):root;
+    } else {
+      if(!root.right)return root;
+      if(val>root.right.val){
+        root.right.right=this.splay(root.right.right,val,S);
+        S.push({what:`Zig-Zig (Right-Right): Left Rotate at ${root.val}, then Left Rotate again`,why:`Mirror of left Zig-Zig. Target is in right-right position. Two left rotations move it two levels up.`,draw:()=>{this.reset();if(root.right)root.right._st='st-rot';root._st='st-rot';this.draw();}});
+        root=this.rotL(root);
+      } else if(val<root.right.val){
+        root.right.left=this.splay(root.right.left,val,S);
+        if(root.right.left){
+          S.push({what:`Zig-Zag (Right-Left): Right Rotate at ${root.right.val}, then Left Rotate at ${root.val}`,why:`Mirror Zig-Zag. Two different rotations: right rotate the right child, then left rotate the root.`,draw:()=>{this.reset();if(root.right)root.right._st='st-rot';root._st='st-rot';this.draw();}});
+          root.right=this.rotR(root.right);
+        }
+      }
+      return root.right?this.rotL(root):root;
+    }
+  }
+
+  insert(val){
+    const S=[];
+    if(!this.root){
+      this.root=new SN(val);
+      S.push({what:`Insert ${val} — tree was empty, becomes root`,why:`First node always becomes root.`,draw:()=>this.draw()});
+      return S;
+    }
+    this.root=this.splay(this.root,val,S);
+    if(this.root.val===val){S.push({what:`${val} already exists in tree`,why:'',draw:()=>this.draw()});return S;}
+    const z=new SN(val);
+    if(val<this.root.val){z.right=this.root;z.left=this.root.left;this.root.left=null;}
+    else{z.left=this.root;z.right=this.root.right;this.root.right=null;}
+    this.root=z;
+    S.push({what:`✓ ${val} inserted and splayed to root`,why:`After every operation in a Splay Tree, the accessed node moves to the root. Recently accessed nodes stay near the top → O(log n) amortized time for any sequence.`,draw:()=>{this.reset();this.root._st='st-hi';this.draw();}});
+    return S;
+  }
+  search(val){
+    const S=[];
+    S.push({what:`Searching for ${val} — will splay to root if found`,why:`Splay Tree's key feature: every accessed node (found or not) is splayed to root via Zig/Zig-Zig/Zig-Zag rotations.`,draw:()=>this.draw()});
+    this.root=this.splay(this.root,val,S);
+    if(this.root&&this.root.val===val){
+      S.push({what:`✓ Found ${val} — now at ROOT (splayed up)`,why:`If you search for ${val} again immediately, it's O(1) — it's already the root! This self-adjusting property makes frequently accessed nodes very fast.`,draw:()=>{this.reset();this.root._st='st-fnd';this.draw();}});
+    } else {
+      S.push({what:`✗ ${val} not found in tree`,why:'Value absent.',draw:()=>{this.reset();this.draw();}});
+    }
+    return S;
+  }
+}
+const splay=new Splay();
+function initSplay(){
+  buildCtrl({
+    numPH:'Number…',
+    onInsert:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(splay.insert(v));},
+    btns:[
+      {lbl:'Insert',cls:'btn-blue',fn:()=>{const v=numVal();if(!v)return;clrNum();loadSteps(splay.insert(v));}},
+      {lbl:'Search (Splay)',cls:'btn-grn',fn:()=>{const v=numVal();if(!v)return;loadSteps(splay.search(v));}},
+    ],
+    presets:[
+      {lbl:'Demo',fn:()=>{splay.root=null;[20,10,30,5,15,25,35].forEach(v=>splay.insert(v));splay.reset();splay.draw();obsShow('7-node splay tree ready','Now search for 5 and watch it splay all the way to root via Zig-Zig!');}},
+    ],
+    onReset:()=>{splay.root=null;svgClear();obsClear();STEPS=[];document.getElementById('step-bar').style.display='none';stopAuto();},
+    onRandom:()=>{splay.root=null;const vs=[...new Set(Array.from({length:7},()=>Math.floor(Math.random()*90)+5))];vs.forEach(v=>splay.insert(v));splay.reset();splay.draw();obsShow(`Random: ${vs.join(', ')}`,'');}
+  });
+  splay.draw();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TRIE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+class TNode{constructor(){this.ch={};this.isEnd=false;}}
+class Trie{
+  constructor(){this.root=new TNode();this.words=[];}
+  insert(word){
+    const S=[],W=word.toUpperCase();
+    let cur=this.root;
+    S.push({what:`Inserting "${W}" into Trie`,why:`We traverse character by character from the root, creating new nodes only when a character doesn't exist yet.`,draw:()=>this._draw(null)});
+    for(let i=0;i<W.length;i++){
+      const c=W[i];
+      if(!cur.ch[c]){
+        cur.ch[c]=new TNode();
+        S.push({what:`Create new node '${c}' at depth ${i+1}`,why:`'${c}' has no child node yet — create one. Path so far: ${W.slice(0,i+1)}`,draw:()=>this._draw(W.slice(0,i+1))});
+      } else {
+        S.push({what:`Node '${c}' exists at depth ${i+1} — follow it`,why:`No new node needed. Character '${c}' already has a path. This is the trie's key advantage: shared prefixes save memory.`,draw:()=>this._draw(W.slice(0,i+1))});
+      }
+      cur=cur.ch[c];
+    }
+    cur.isEnd=true;
+    if(!this.words.includes(W))this.words.push(W);
+    S.push({what:`✓ "${W}" inserted — last node marked as word-end (*)`,why:`Setting isEnd=true marks that a complete word ends here. The trie now contains "${W}".`,draw:()=>this._draw(W)});
+    this._renderWordList();
+    return S;
+  }
+  search(word){
+    const S=[],W=word.toUpperCase();let cur=this.root;
+    for(let i=0;i<W.length;i++){
+      const c=W[i];
+      if(!cur.ch[c]){S.push({what:`✗ "${W}" not found — '${c}' missing at depth ${i+1}`,why:`Character '${c}' has no node. The word cannot exist in the trie.`,draw:()=>this._draw(W.slice(0,i))});return S;}
+      S.push({what:`Following '${c}' at depth ${i+1} — path: ${W.slice(0,i+1)}`,why:`Character found. Continue traversal.`,draw:()=>this._draw(W.slice(0,i+1))});
+      cur=cur.ch[c];
+    }
+    if(cur.isEnd)S.push({what:`✓ "${W}" found in Trie!`,why:`Reached the final character node with isEnd=true. Complete word exists.`,draw:()=>this._draw(W)});
+    else S.push({what:`"${W}" is a prefix — but not a complete word`,why:`isEnd=false at this node. "${W}" is a valid prefix of longer words but wasn't inserted as a standalone word.`,draw:()=>this._draw(W)});
+    return S;
+  }
+  prefix(word){
+    const S=[],W=word.toUpperCase();let cur=this.root;
+    for(let i=0;i<W.length;i++){
+      if(!cur.ch[W[i]]){S.push({what:`No words with prefix "${W}"`,why:'',draw:()=>this._draw(null)});return S;}
+      cur=cur.ch[W[i]];
+    }
+    const m=this.words.filter(w=>w.startsWith(W));
+    S.push({what:`Prefix "${W}" → ${m.length} word(s): ${m.join(', ')||'none'}`,why:`All inserted words starting with "${W}". This is why tries are used for autocomplete — prefix queries are O(prefix length).`,draw:()=>this._draw(W)});
+    return S;
+  }
+  _draw(hi){
+    // Build simplified visual
+    const kids=Object.keys(this.root.ch);
+    if(!kids.length){svgClear();return;}
+    // flatten trie into tree for rendering
+    function build(node,char,depth){
+      const n={val:char||'·',isEnd:node.isEnd,left:null,right:null,_st:'st-def'};
+      const cs=Object.keys(node.ch);
+      if(cs.length>0){n.left=build(node.ch[cs[0]],cs[0],depth+1);let cur=n;for(let i=1;i<cs.length;i++){cur.right=build(node.ch[cs[i]],cs[i],depth+1);cur=cur.right;}}
+      return n;
+    }
+    const root={val:'∅',left:null,right:null,_st:'st-def',isEnd:false};
+    root.left=build(this.root.ch[kids[0]],kids[0],1);
+    let cur=root;for(let i=1;i<kids.length;i++){cur.right=build(this.root.ch[kids[i]],kids[i],1);cur=cur.right;}
+    // highlight path
+    if(hi){
+      function markPath(n,path,d){
+        if(!n||d>path.length)return;
+        if(n.val===path[d-1]){n._st=d===path.length?'st-fnd':'st-path';markPath(n.left,path,d+1);markPath(n.right,path,d+1);}
+        else{markPath(n.left,path,d);markPath(n.right,path,d);}
+      }
+      markPath(root.left,hi.split(''),1);markPath(root.right,hi.split(''),1);
+    }
+    renderSVG(root,null,n=>n._st||'st-def',n=>n.isEnd?'*':'');
+  }
+  _renderWordList(){
+    const bb=document.getElementById('bottom-bar');bb.style.display='flex';
+    bb.innerHTML='<span class="plabel" style="margin-right:5px;">Words:</span>'+
+      this.words.map(w=>`<span class="twc" onclick="trieOp('${w}')">${w}</span>`).join('');
+  }
+}
+const trie=new Trie();
+function trieOp(w){loadSteps(trie.search(w));}
+function initTrie(){
+  buildCtrl({
+    numInput:false,strInput:true,strPH:'Type word…',
+    btns:[
+      {lbl:'Insert',cls:'btn-blue',fn:()=>{const w=strVal();if(!w)return;loadSteps(trie.insert(w));}},
+      {lbl:'Search',cls:'btn-grn', fn:()=>{const w=strVal();if(!w)return;loadSteps(trie.search(w));}},
+      {lbl:'Prefix Query',cls:'btn btn-sm',fn:()=>{const w=strVal();if(!w)return;loadSteps(trie.prefix(w));}},
+    ],
+    presets:[
+      {lbl:'CS Words',fn:()=>{['TREE','TRIE','DATA','DART','DARK','DO','DOG','DOGS','CAT','CAN'].forEach(w=>trie.insert(w));trie._draw(null);trie._renderWordList();obsShow('CS word set loaded','Try prefix query "DA" or search "DOG".');}},
+    ],
+    onReset:()=>{trie.root=new TNode();trie.words=[];svgClear();document.getElementById('bottom-bar').style.display='none';obsClear();STEPS=[];document.getElementById('step-bar').style.display='none';stopAuto();},
+    onRandom:false
+  });
+  document.getElementById('bottom-bar').style.display='flex';
+  trie._draw(null);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// B-TREE PLACEHOLDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function initBTree(){
+  document.getElementById('ctrl-bar').innerHTML='';
+  const t1=document.createElementNS(NS,'text');
+  t1.setAttribute('x',450);t1.setAttribute('y',230);t1.setAttribute('text-anchor','middle');
+  t1.setAttribute('fill','#4d6480');t1.setAttribute('font-family','JetBrains Mono');t1.setAttribute('font-size',20);t1.setAttribute('font-weight',600);
+  t1.textContent='B-Tree Visualizer';
+  const t2=document.createElementNS(NS,'text');
+  t2.setAttribute('x',450);t2.setAttribute('y',265);t2.setAttribute('text-anchor','middle');
+  t2.setAttribute('fill','#4d6480');t2.setAttribute('font-family','JetBrains Mono');t2.setAttribute('font-size',13);
+  t2.textContent='Coming soon — multi-way search tree for databases & file systems';
+  document.getElementById('TR').appendChild(t1);document.getElementById('TR').appendChild(t2);
+  obsShow('B-Tree coming soon','Will cover: node splitting, merging, order-m tree, why databases use B+ Trees for disk I/O optimization.');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// KEYBOARD SHORTCUTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight'||e.key==='.'){sNext();}
+  if(e.key==='ArrowLeft'||e.key===','){sPrev();}
+  if(e.key===' '){e.preventDefault();sAuto();}
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BOOT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+buildDash();
+document.getElementById('ni-dash').classList.add('active');
+</script>
+</body>
+</html>

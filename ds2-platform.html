@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="description" content="DS2 Tree Visualizer — Interactive visualizations for AVL, Red-Black, Heap, Trie, Huffman, and Splay trees. Built for VIT DS2 course."/>
+<meta name="keywords" content="DS2,Data Structures,AVL Tree,Red-Black Tree,Heap,Trie,Huffman,Splay,VIT,Visualizer,Tree,Algorithm"/>
+<meta property="og:title" content="DS2 Tree Visualizer — VIT"/>
+<meta property="og:description" content="Step-by-step tree data structure animations with plain-English explanations."/>
+<meta property="og:type" content="website"/>
+<title>DS2 Tree Visualizer — VIT</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌳</text></svg>"/>
+<link rel="stylesheet" href="css/platform.css"/>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="title">DS2 Visualizer</div>
+    <div class="sub">Vishwakarma Institute of Technology</div>
+    <div class="badge">AY 2025–26 · Sem 4</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <div class="dot" style="background:#3b82f6"></div> Dashboard
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Section 1 · Advanced Trees</div>
+    <div class="nav-item" onclick="showPage('avl')" id="nav-avl">
+      <div class="dot" style="background:#22c55e"></div> AVL Tree
+      <span class="status status-ready">ready</span>
+    </div>
+    <div class="nav-item" onclick="showPage('rbt')" id="nav-rbt">
+      <div class="dot" style="background:#ef4444"></div> Red-Black Tree
+      <span class="status status-ready">ready</span>
+    </div>
+    <div class="nav-item" onclick="showPage('heap')" id="nav-heap">
+      <div class="dot" style="background:#f97316"></div> Heap (Min/Max)
+      <span class="status status-ready">ready</span>
+    </div>
+    <div class="nav-item" onclick="showPage('trie')" id="nav-trie">
+      <div class="dot" style="background:#06b6d4"></div> Trie
+      <span class="status status-ready">ready</span>
+    </div>
+    <div class="nav-item" onclick="showPage('huffman')" id="nav-huffman">
+      <div class="dot" style="background:#a855f7"></div> Huffman Tree
+      <span class="status status-ready">ready</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Section 2 · Randomized</div>
+    <div class="nav-item" onclick="showPage('splay')" id="nav-splay">
+      <div class="dot" style="background:#eab308"></div> Splay Tree
+      <span class="status status-ready">ready</span>
+    </div>
+    <div class="nav-item" onclick="showPage('btree')" id="nav-btree">
+      <div class="dot" style="background:#ec4899"></div> B-Tree
+      <span class="status status-soon">soon</span>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="info">Unit 1 · Unit 3 · Unit 4<br/>DS2 Semester Project</div>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <span class="tree-name" id="topbar-name">Dashboard</span>
+    <span class="tree-unit" id="topbar-unit"></span>
+    <div class="topbar-actions">
+      <div id="topbar-actions-dynamic"></div>
+      <!-- User Menu -->
+      <div class="user-menu">
+        <div class="user-avatar" id="user-avatar-text">YP</div>
+        <span class="user-name" id="user-display-name">User</span>
+        <div class="user-dropdown">
+          <div class="user-dropdown-item" onclick="showPage('dashboard')">📊 Dashboard</div>
+          <div class="user-dropdown-item danger" onclick="logout()">🚪 Sign Out</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PAGE -->
+  <div id="page-dashboard" class="page active" style="display:block;position:relative;">
+    <div class="dash-bg-glow"></div>
+    <div id="dashboard-page">
+      <div class="dash-hero">
+        <div class="dash-welcome" id="dash-welcome-name">Welcome back! 👋</div>
+        <h1>DS2 Tree Visualizer</h1>
+        <p>Interactive visualizations for every data structure in your DS2 syllabus. Step-by-step animations with plain-English explanations for every operation.</p>
+        <div class="dash-stats">
+          <div class="dash-stat">
+            <div class="dash-stat-value">7</div>
+            <div class="dash-stat-label">Data Structures</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-value">6</div>
+            <div class="dash-stat-label">Ready to Use</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-value">∞</div>
+            <div class="dash-stat-label">Step-by-Step</div>
+          </div>
+        </div>
+      </div>
+      <div class="dash-grid" id="dash-grid"></div>
+    </div>
+  </div>
+
+  <!-- TREE VISUALIZER PAGE (shared by all trees) -->
+  <div id="page-tree" class="page" style="flex-direction:column;">
+    <div id="workspace" style="flex:1;display:flex;overflow:hidden;">
+      <div id="canvas-panel">
+        <div id="controls"></div>
+        <div id="step-bar">
+          <button class="btn btn-sm" onclick="stepFirst()">⏮</button>
+          <button class="btn btn-sm" onclick="stepPrev()">◀</button>
+          <button class="btn btn-sm" id="autoBtn" onclick="stepAuto()">▶ Auto</button>
+          <button class="btn btn-sm" onclick="stepNext()">▶</button>
+          <button class="btn btn-sm" onclick="stepLast()">⏭</button>
+          <div class="speed-row">
+            spd <input type="range" id="speedSlider" min="1" max="10" value="5"/>
+          </div>
+          <span class="step-counter" id="stepCounter"></span>
+          <span class="step-msg" id="stepMsg"></span>
+        </div>
+        <div id="svg-container">
+          <svg id="tree-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <g id="svg-root"></g>
+          </svg>
+        </div>
+        <div id="heap-array" style="display:none;"></div>
+        <div id="trie-words" style="display:none;"></div>
+      </div>
+      <div id="obs-panel">
+        <div class="obs-header">
+          <span class="obs-title">Observations</span>
+          <span class="obs-clear" onclick="clearObs()">clear</span>
+        </div>
+        <div id="obs-current">
+          <div class="obs-step-label">Current Step</div>
+          <div class="obs-step-text" id="obs-text">Perform an operation to see step-by-step explanations here.</div>
+          <div class="obs-step-why" id="obs-why"></div>
+        </div>
+        <div id="obs-history"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="platform-footer">
+    <p>DS2 Tree Visualizer · Vishwakarma Institute of Technology · AY 2025–26 Sem 4<br/>
+    Built with ❤️ for Data Structures II</p>
+  </div>
+
+</div><!-- end #main -->
+
+<!-- JS Modules (order matters — core first, then tree modules) -->
+<script src="js/platform-core.js"></script>
+<script src="js/avl-tree.js"></script>
+<script src="js/rbt-tree.js"></script>
+<script src="js/heap.js"></script>
+<script src="js/trie.js"></script>
+<script src="js/huffman.js"></script>
+<script src="js/splay.js"></script>
+<script src="js/btree.js"></script>
+</body>
+</html>
